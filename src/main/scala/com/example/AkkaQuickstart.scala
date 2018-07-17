@@ -1,7 +1,14 @@
 //#full-example
 package com.example
 
-import akka.actor.{ Actor, ActorLogging, ActorRef, ActorSystem, Props }
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import kamon.Kamon
+import kamon.metric.MeasurementUnit
+import kamon.riemann.RiemannReporter
+
+import scala.concurrent.ExecutionContext
+import scala.concurrent.forkjoin.ForkJoinPool
+
 
 //#greeter-companion
 //#greeter-messages
@@ -59,6 +66,11 @@ class Printer extends Actor with ActorLogging {
 object AkkaQuickstart extends App {
   import Greeter._
 
+  implicit val executionContext = ExecutionContext.fromExecutor(new ForkJoinPool(2))
+  val riemannReporter = new RiemannReporter()
+  Kamon.addReporter(riemannReporter)
+
+  val myCounter = Kamon.counter("my.counter", MeasurementUnit.information.kilobytes)
   // Create the 'helloAkka' actor system
   val system: ActorSystem = ActorSystem("helloAkka")
 
@@ -76,17 +88,22 @@ object AkkaQuickstart extends App {
   //#create-actors
 
   //#main-send-messages
-  howdyGreeter ! WhoToGreet("Akka")
-  howdyGreeter ! Greet
+  var i = 0
+  for (i <- 1 to 10)
+  {
+    myCounter.increment()
+    howdyGreeter ! WhoToGreet("Akka")
+    howdyGreeter ! Greet
 
-  howdyGreeter ! WhoToGreet("Lightbend")
-  howdyGreeter ! Greet
+    howdyGreeter ! WhoToGreet("Lightbend")
+    howdyGreeter ! Greet
 
-  helloGreeter ! WhoToGreet("Scala")
-  helloGreeter ! Greet
+    helloGreeter ! WhoToGreet("Scala")
+    helloGreeter ! Greet
 
-  goodDayGreeter ! WhoToGreet("Play")
-  goodDayGreeter ! Greet
+    goodDayGreeter ! WhoToGreet("Play")
+    goodDayGreeter ! Greet
+  }
   //#main-send-messages
 }
 //#main-class
